@@ -169,8 +169,8 @@ public class MainActivity extends AppCompatActivity {
             homeViewModel.setTextTitleResult(s[0]);
             prepareLocation(null);
 
-            WebView myWebView = (WebView) findViewById(R.id.webview);
-            myWebView.stopLoading();
+            /*WebView myWebView = (WebView) findViewById(R.id.webview);
+            myWebView.stopLoading();*/
         }
     }
 

@@ -1,5 +1,6 @@
 package com.georgevdl.musicmap;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -19,7 +20,6 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.CopyrightOverlay;
 import org.osmdroid.views.overlay.Marker;
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 import java.util.ArrayList;
@@ -77,10 +77,6 @@ public class LocationPickerOSMDroidActivity extends AppCompatActivity {
 
         map.setMultiTouchControls(true);
 
-        this.mLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(ctx),map);
-        this.mLocationOverlay.enableMyLocation();
-        map.getOverlays().add(this.mLocationOverlay);
-
         Intent intent = getIntent();
 
         startMarker = new Marker(map);
@@ -105,12 +101,12 @@ public class LocationPickerOSMDroidActivity extends AppCompatActivity {
         mCopyrightOverlay = new CopyrightOverlay(ctx);
         map.getOverlays().add(this.mCopyrightOverlay);
 
-        /*requestPermissionsIfNecessary(arrayOf(
-                // if you need to show the current location, uncomment the line below
-                Manifest.permission.ACCESS_FINE_LOCATION,
+        String[] permsString = {
                 // WRITE_EXTERNAL_STORAGE is required in order to show the map
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ));*/
+                Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+        requestPermissionsIfNecessary(permsString
+        );
     }
 
     @Override

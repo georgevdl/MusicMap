@@ -26,7 +26,7 @@ public class AddFragment extends Fragment {
 
         binding = FragmentAddBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
-        ((MainActivity)getActivity()).setHomeViewModel(homeViewModel);
+        ((MainActivity) requireActivity()).setHomeViewModel(homeViewModel);
 
 
         final TextView textViewAdd = binding.textAdd;
