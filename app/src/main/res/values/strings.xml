@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Music Map</string>
+    <string name="title_add">Add</string>
+    <string name="title_my_map">My Map</string>
+    <string name="title_global_map">Global Map</string>
+    <string name="title">Title</string>
+    <string name="artist">Artist</string>
+    <string name="genre">Genre</string>
+    <string name="album_art_url">Album Art URL</string>
+    <string name="lyrics">Lyrics</string>
+    <string name="toast_message_invalid_url">Shared text does not contain a valid Shazam URL</string>
+</resources>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/navigation_add">
+
+    <fragment
+        android:id="@+id/navigation_add"
+        android:name="com.georgevdl.musicmap.ui.add.AddFragment"
+        android:label="@string/title_add"
+        tools:layout="@layout/fragment_add" />
+
+    <fragment
+        android:id="@+id/navigation_my_map"
+        android:name="com.georgevdl.musicmap.ui.my_map.MyMapFragment"
+        android:label="@string/title_my_map"
+        tools:layout="@layout/fragment_mymap" />
+
+    <fragment
+        android:id="@+id/navigation_global_map"
+        android:name="com.georgevdl.musicmap.ui.global_map.GlobalMapFragment"
+        android:label="@string/title_global_map"
+        tools:layout="@layout/fragment_globalmap" />
+</navigation>
