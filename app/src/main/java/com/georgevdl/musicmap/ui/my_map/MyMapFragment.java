@@ -2,6 +2,7 @@ package com.georgevdl.musicmap.ui.my_map;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
@@ -14,9 +15,16 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.georgevdl.musicmap.MainActivity;
+import com.georgevdl.musicmap.Track;
+import com.georgevdl.musicmap.TrackLocation;
+import com.georgevdl.musicmap.TrackWithLocations;
 import com.georgevdl.musicmap.databinding.FragmentMymapBinding;
 
 import org.osmdroid.api.IGeoPoint;
@@ -26,13 +34,15 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.CopyrightOverlay;
+import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.MinimapOverlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
-import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
+
+import java.util.List;
 
 public class MyMapFragment extends Fragment {
 
@@ -65,9 +75,32 @@ public class MyMapFragment extends Fragment {
     private FragmentMymapBinding binding;
     private CopyrightOverlay mCopyrightOverlay;
 
+    private MyMapViewModel myMapViewModel;
+
+    private final Observer<Track> trackObserver = new Observer<Track>() {
+        @Override
+        public void onChanged(Track track) {
+            ((MainActivity) getActivity()).showTrackInfo(track);
+        }
+    };
+
+    private Marker.OnMarkerClickListener markerListener = new Marker.OnMarkerClickListener() {
+
+        @Override
+        public boolean onMarkerClick(Marker marker, MapView mapView) {
+            marker.showInfoWindow();
+            mapView.getController().animateTo(marker.getPosition());
+            if (marker.getId().startsWith("track_")) {
+                int trackId = Integer.parseInt(marker.getId().substring(6));
+                myMapViewModel.getTrackById(trackId).observe(getViewLifecycleOwner(), trackObserver);
+            }
+            return true;
+        }
+    };
+
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        MyMapViewModel myMapViewModel =
+        myMapViewModel =
                 new ViewModelProvider(this).get(MyMapViewModel.class);
 
         binding = FragmentMymapBinding.inflate(inflater, container, false);
@@ -116,21 +149,84 @@ public class MyMapFragment extends Fragment {
         });
 
         map.setMultiTouchControls(true);
-        //Copyright overlay
-        mCopyrightOverlay = new CopyrightOverlay(ctx);
-        map.getOverlays().add(this.mCopyrightOverlay);
 
 
         return root;
     }
 
     @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
         final Context context = this.getActivity();
         final DisplayMetrics dm = context.getResources().getDisplayMetrics();
         mPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+        // Track locations
+        final Observer<List<TrackWithLocations>> trackLocationListObserver = new Observer<List<TrackWithLocations>>() {
+            @Override
+            public void onChanged(final List<TrackWithLocations> results) {
+
+                if (results != null) {
+                    for (TrackWithLocations trackWithLocations : results) {
+                        if (trackWithLocations.trackLocations == null)
+                            continue;
+                        if (trackWithLocations.trackLocations.isEmpty())
+                            continue;
+
+                        for (TrackLocation result : trackWithLocations.trackLocations) {
+                            GeoPoint startPoint = new GeoPoint(result.mLatitude, result.mLongitude);
+                            Marker startMarker = new Marker(map);
+                            startMarker.setPosition(startPoint);
+                            startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                            startMarker.setTitle(trackWithLocations.track.mTitle + "\n" + trackWithLocations.track.mArtist);
+                            startMarker.setSubDescription(trackWithLocations.track.mGenre);
+
+                            startMarker.setId("track_" + trackWithLocations.track.mId);
+
+                            startMarker.setOnMarkerClickListener(markerListener);
+
+                            Glide.with(getContext())
+                                    .asDrawable()
+                                    .load(trackWithLocations.track.mAlbumArtURL)
+                                    .dontTransform()
+                                    .into(new CustomTarget<Drawable>() {
+                                        @Override
+                                        public void onResourceReady(@NonNull Drawable resource, Transition<? super Drawable> transition) {
+                                            startMarker.setImage(resource);
+                                            //startMarker.setIcon(resource);
+                                            //Toast.makeText(getContext(), "OK", Toast.LENGTH_SHORT).show();
+
+                                        }
+
+                                        @Override
+                                        public void onLoadCleared(Drawable placeholder) {
+                                        }
+                                        /*@Override
+                                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                                            Toast.makeText(getContext(), "Failed to get album art", Toast.LENGTH_SHORT).show();
+                                        }*/
+                                    });
+
+                            map.getOverlays().add(startMarker);
+                        }
+                    }
+                }
+            }
+        };
+
+        myMapViewModel.getAllResults().observe(getViewLifecycleOwner(), trackLocationListObserver);
+
+        /*List<TrackLocation> results = repo.getAllResults();
+        if(results != null){
+            for (TrackLocation result : results) {
+                GeoPoint startPoint = new GeoPoint(result.mLatitude, result.mLongitude);
+                Marker startMarker = new Marker(map);
+                startMarker.setPosition(startPoint);
+                startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                map.getOverlays().add(startMarker);
+            }
+        }*/
 
 
         //My Location
@@ -146,24 +242,24 @@ public class MyMapFragment extends Fragment {
         map.getOverlays().add(this.mCopyrightOverlay);
 
 
-        //On screen compass
+        /*//On screen compass
         mCompassOverlay = new CompassOverlay(context, new InternalCompassOrientationProvider(context),
                 map);
         mCompassOverlay.enableCompass();
-        map.getOverlays().add(this.mCompassOverlay);
+        map.getOverlays().add(this.mCompassOverlay);*/
 
 
-        //map scale
+        /*//map scale
         mScaleBarOverlay = new ScaleBarOverlay(map);
         mScaleBarOverlay.setCentred(true);
         mScaleBarOverlay.setScaleBarOffset(dm.widthPixels / 2, 10);
-        map.getOverlays().add(this.mScaleBarOverlay);
+        map.getOverlays().add(this.mScaleBarOverlay);*/
 
 
         //support for map rotation
-        mRotationGestureOverlay = new RotationGestureOverlay(map);
+        /*mRotationGestureOverlay = new RotationGestureOverlay(map);
         mRotationGestureOverlay.setEnabled(true);
-        map.getOverlays().add(this.mRotationGestureOverlay);
+        map.getOverlays().add(this.mRotationGestureOverlay);*/
 
 
         //needed for pinch zooms
@@ -175,15 +271,14 @@ public class MyMapFragment extends Fragment {
         //the rest of this is restoring the last map location the user looked at
         final float zoomLevel = mPrefs.getFloat(PREFS_ZOOM_LEVEL_DOUBLE, 1);
         map.getController().setZoom(zoomLevel);
-        final float orientation = mPrefs.getFloat(PREFS_ORIENTATION, 0);
-        map.setMapOrientation(orientation, false);
         final String latitudeString = mPrefs.getString(PREFS_LATITUDE_STRING, "1.0");
         final String longitudeString = mPrefs.getString(PREFS_LONGITUDE_STRING, "1.0");
         final double latitude = Double.valueOf(latitudeString);
         final double longitude = Double.valueOf(longitudeString);
         map.setExpectedCenter(new GeoPoint(latitude, longitude));
 
-        setHasOptionsMenu(true);
+        //setHasOptionsMenu(true);
+        //setHasOptionsMenu(true);
     }
 
     @Override

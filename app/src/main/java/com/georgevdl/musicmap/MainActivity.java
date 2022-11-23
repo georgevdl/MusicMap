@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     MyLocationListener locationListener;
     private final int REQUEST_LOCATION_PERMISSION = 1;
     private String currentURL = "";
+    private Track currentTrack = null;
     Location lastKnownLocation = null;
     private final int REQUEST_MANUAL_LOCATION = 2;
 
@@ -79,7 +80,8 @@ public class MainActivity extends AppCompatActivity {
                     lastKnownLocation = new Location("");
                     lastKnownLocation.setLatitude(latitude);
                     lastKnownLocation.setLongitude(longitude);
-                    Toast.makeText(this, "Manual location: " + latitude + " " + longitude, Toast.LENGTH_SHORT).show();
+                    lastKnownLocation.setTime(System.currentTimeMillis() / 1000L);
+                    //Toast.makeText(this, "Manual location: " + latitude + " " + longitude, Toast.LENGTH_SHORT).show();
                     homeViewModel.setManuallyPickLocationButtonVisibility(Button.GONE);
                     homeViewModel.setTextStatus("Ready to add to map\n" + latitude + ", " + longitude);
                     homeViewModel.setAddToMyMapButtonVisibility(Button.VISIBLE);
@@ -128,11 +130,11 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onLoadResource(WebView view, String url) {
                     if (url.contains("favicon.ico") && counter++ == 2) {
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('Title: '+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h1', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('Artist: '+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h2/a', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('Genre: '+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h3', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('Album Art URL: '+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[1]/img/@src', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('Lyrics: '+document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/p', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.titleStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h1', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.artistStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h2/meta/@content', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.genreStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h3', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.albumArtURLStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[1]/img/@src', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.lyricsStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/p', document, null, XPathResult.STRING_TYPE, null).stringValue);");
                         myWebView.loadUrl("javascript:window.HtmlViewer.showHTML(document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/div/div', document, null, XPathResult.STRING_TYPE, null).stringValue);");
                     }
                 }
@@ -146,27 +148,18 @@ public class MainActivity extends AppCompatActivity {
         homeViewModel = avm;
     }
 
-    /**
-     * Gets the track metadata and shows them in Add fragment
-     * @param s Track metadata
-     */
-    public synchronized void setTrackDetails(String[] s) {
+    public synchronized void setTrackInfo(String[] s) {
 
-        homeViewModel.setStartVisibility(TextView.GONE);
-        homeViewModel.setResultsVisibility(TextView.VISIBLE);
+        if (!MyJavaScriptInterface.titleStart.equals(s[0]) && !s[5].equals(currentURL)) {
 
-
-        homeViewModel.setTextArtistResult(s[1]);
-        homeViewModel.setTextGenreResult(s[2]);
-        homeViewModel.setTextAlbumArtURLResult(s[3]);
-        if (!"Lyrics: ".equals(s[4])) {
-            homeViewModel.setTextLyricsResult(s[4]);
-            homeViewModel.setLyricsVisibility(TextView.VISIBLE);
-        }
-
-        if (!"Title: ".equals(s[0]) && !s[5].equals(currentURL)) {
             currentURL = s[5];
-            homeViewModel.setTextTitleResult(s[0]);
+            String tmp = currentURL.substring(currentURL.lastIndexOf("/track/") + 7);
+            String idStr = tmp.substring(0, tmp.indexOf('/'));
+            int id = Integer.parseInt(idStr);
+            currentTrack = new Track(s[0], s[1], s[2], s[3], s[4], id);
+
+            showTrackInfo(currentTrack);
+
             prepareLocation(null);
 
             /*WebView myWebView = (WebView) findViewById(R.id.webview);
@@ -174,11 +167,38 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void showTrackInfo(Track track) {
+
+        homeViewModel.setStartVisibility(TextView.GONE);
+        homeViewModel.setResultsVisibility(TextView.VISIBLE);
+        homeViewModel.setTextTitleResult(track.mTitle);
+        homeViewModel.setTextArtistResult(track.mArtist);
+
+        if (track.mGenre.length() > 0) {
+            homeViewModel.setTextGenreResult(track.mGenre);
+        } else {
+            homeViewModel.setTextGenreResult("Unknown");
+        }
+
+        if (track.mAlbumArtURL.length() > 0) {
+            homeViewModel.setTextAlbumArtURLResult(track.mAlbumArtURL);
+        } else {
+            homeViewModel.setTextAlbumArtURLResult("Unknown");
+        }
+
+        if (track.mLyrics.length() > 0) {
+            homeViewModel.setTextLyricsResult(track.mLyrics);
+            homeViewModel.setLyricsVisibility(TextView.VISIBLE);
+        } else {
+            homeViewModel.setLyricsVisibility(TextView.GONE);
+        }
+    }
+
     public void manuallyPickLocation(View v) {
-        Toast.makeText(this, "Picking location manually", Toast.LENGTH_SHORT).show();
+        //Toast.makeText(this, "Picking location manually", Toast.LENGTH_SHORT).show();
         stopLocation();
         Intent myIntent = new Intent(MainActivity.this, LocationPickerOSMDroidActivity.class);
-        if(lastKnownLocation != null){
+        if (lastKnownLocation != null) {
             myIntent.putExtra("startLoc", lastKnownLocation);
         }
         myIntent.putExtra("title", homeViewModel.getTextTitleResult().getValue());
@@ -229,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
 
         locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
 
-        Toast.makeText(this, "Location started", Toast.LENGTH_SHORT).show();
+        //Toast.makeText(this, "Location started", Toast.LENGTH_SHORT).show();
         return true;
     }
 
@@ -268,7 +288,7 @@ public class MainActivity extends AppCompatActivity {
     public void requestLocationPermission() {
         String[] perms = {Manifest.permission.ACCESS_FINE_LOCATION};
         if(EasyPermissions.hasPermissions(this, perms)) {
-            Toast.makeText(this, "Permission already granted", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "Permission already granted", Toast.LENGTH_SHORT).show();
             startLocation();
         }
         else {
@@ -282,5 +302,14 @@ public class MainActivity extends AppCompatActivity {
 
         // Forward results to EasyPermissions
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
+
+    public void addToMyMap(View v) {
+        homeViewModel.setTryGPSAgainButtonVisibility(Button.GONE);
+        homeViewModel.setManuallyPickLocationButtonVisibility(Button.GONE);
+        homeViewModel.setAddToMyMapButtonVisibility(Button.GONE);
+        homeViewModel.setStatusTextVisibility(TextView.GONE);
+        homeViewModel.insert(currentTrack);
+        homeViewModel.insert(new TrackLocation(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), lastKnownLocation.getTime(), currentTrack.mId));
     }
 }

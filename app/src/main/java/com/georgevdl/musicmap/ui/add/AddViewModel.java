@@ -1,12 +1,17 @@
 package com.georgevdl.musicmap.ui.add;
 
+import android.app.Application;
 import android.widget.TextView;
 
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.ViewModel;
 
-public class AddViewModel extends ViewModel {
+import com.georgevdl.musicmap.MusicMapRoomRepository;
+import com.georgevdl.musicmap.Track;
+import com.georgevdl.musicmap.TrackLocation;
+
+public class AddViewModel extends AndroidViewModel {
 
     private final MutableLiveData<String> mTextStart;
     private final MutableLiveData<Integer> mStartVisibility;
@@ -28,9 +33,12 @@ public class AddViewModel extends ViewModel {
     private final MutableLiveData<Integer> mTryGPSAgainButtonVisibility;
     private final MutableLiveData<Integer> mManuallyPickLocationButtonVisibility;
     private final MutableLiveData<Integer> mAddToMyMapButtonVisibility;
-    private final MutableLiveData<Long> mUnixTime;
 
-    public AddViewModel() {
+    private MusicMapRoomRepository mRepository;
+
+
+    public AddViewModel(Application application) {
+        super(application);
         mTextStart = new MutableLiveData<>();
         mTextStart.setValue("To start, open Shazam and share a song to this app");
         mStartVisibility = new MutableLiveData<>();
@@ -72,7 +80,7 @@ public class AddViewModel extends ViewModel {
         mAddToMyMapButtonVisibility = new MutableLiveData<>();
         mAddToMyMapButtonVisibility.setValue((TextView.GONE));
 
-        mUnixTime = new MutableLiveData<>();
+        mRepository = new MusicMapRoomRepository(application);
     }
 
     public LiveData<String> getTextStart() {
@@ -123,25 +131,66 @@ public class AddViewModel extends ViewModel {
 
     public void setTextTitleResult(String s) {
         mTextTitleResult.postValue(s);
-        mUnixTime.postValue(System.currentTimeMillis() / 1000L);
     }
-    public void setTextArtistResult(String s) { mTextArtistResult.postValue(s); }
-    public void setTextGenreResult(String s) { mTextGenreResult.postValue(s); }
-    public void setTextAlbumArtURLResult(String s) { mTextAlbumArtURLResult.postValue(s); }
-    public void setTextLyricsResult(String s) { mTextLyricsResult.postValue(s); }
 
-    public void setStartVisibility(Integer i) { mStartVisibility.postValue(i); }
-    public void setResultsVisibility(Integer i) { mResultsVisibility.postValue(i); }
-    public void setLyricsVisibility(Integer i) { mLyricsVisibility.postValue(i); }
+    public void setTextArtistResult(String s) {
+        mTextArtistResult.postValue(s);
+    }
 
-    public void setTextStatus(String s) { mTextProgressBarDescription.postValue(s); }
+    public void setTextGenreResult(String s) {
+        mTextGenreResult.postValue(s);
+    }
 
-    public void setProgressBarVisibility(Integer i) { mProgressBarVisibility.postValue(i); }
-    public void setStatusTextVisibility(Integer i) { mStatusTextVisibility.postValue(i); }
+    public void setTextAlbumArtURLResult(String s) {
+        mTextAlbumArtURLResult.postValue(s);
+    }
 
-    public void setTryGPSAgainButtonVisibility(Integer i) { mTryGPSAgainButtonVisibility.postValue(i); }
-    public void setManuallyPickLocationButtonVisibility(Integer i) { mManuallyPickLocationButtonVisibility.postValue(i); }
-    public void setAddToMyMapButtonVisibility(Integer i) { mAddToMyMapButtonVisibility.postValue(i); }
+    public void setTextLyricsResult(String s) {
+        mTextLyricsResult.postValue(s);
+    }
 
-    public long getTrackAddTime() { return mUnixTime.getValue(); }
+    public void setStartVisibility(Integer i) {
+        mStartVisibility.postValue(i);
+    }
+
+    public void setResultsVisibility(Integer i) {
+        mResultsVisibility.postValue(i);
+    }
+
+    public void setLyricsVisibility(Integer i) {
+        mLyricsVisibility.postValue(i);
+    }
+
+    public void setTextStatus(String s) {
+        mTextProgressBarDescription.postValue(s);
+    }
+
+    public void setProgressBarVisibility(Integer i) {
+        mProgressBarVisibility.postValue(i);
+    }
+
+    public void setStatusTextVisibility(Integer i) {
+        mStatusTextVisibility.postValue(i);
+    }
+
+    public void setTryGPSAgainButtonVisibility(Integer i) {
+        mTryGPSAgainButtonVisibility.postValue(i);
+    }
+
+    public void setManuallyPickLocationButtonVisibility(Integer i) {
+        mManuallyPickLocationButtonVisibility.postValue(i);
+    }
+
+    public void setAddToMyMapButtonVisibility(Integer i) {
+        mAddToMyMapButtonVisibility.postValue(i);
+    }
+
+    public void insert(TrackLocation trackLocation) {
+        mRepository.insert(trackLocation);
+    }
+
+    public void insert(Track track) {
+        mRepository.insert(track);
+    }
+
 }
