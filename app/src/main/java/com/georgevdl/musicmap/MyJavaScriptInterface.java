@@ -52,8 +52,9 @@ public class MyJavaScriptInterface {
             lyrics += "\n\n";
             lyrics += _html;
             ready = true;
-        } else if (_html.length() == 0)
+        } else {
             ready = true;
+        }
 
         String[] s = {title, artist, genre, albumArtURL, lyrics, URL};
         if (!title.equals(titleStart) && !artist.equals(artistStart) && !genre.equals(genreStart) && !albumArtURL.equals(albumArtURLStart) && !lyrics.equals(lyricsStart) && ready) {

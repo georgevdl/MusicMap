@@ -69,6 +69,9 @@ public class LocationPickerOSMDroidActivity extends AppCompatActivity {
         startMarker.setDraggable(true);
         map.getOverlays().add(startMarker);
 
+        //scales tiles to the current screen's DPI, helps with readability of labels
+        map.setTilesScaledToDpi(true);
+
         //Copyright overlay
         mCopyrightOverlay = new CopyrightOverlay(ctx);
         map.getOverlays().add(this.mCopyrightOverlay);

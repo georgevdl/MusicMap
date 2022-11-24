@@ -29,7 +29,6 @@ import org.osmdroid.views.overlay.CopyrightOverlay;
 import org.osmdroid.views.overlay.MinimapOverlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
-import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
@@ -113,9 +112,6 @@ public class GlobalMapFragment extends Fragment {
         });
 
         map.setMultiTouchControls(true);
-        //Copyright overlay
-        mCopyrightOverlay = new CopyrightOverlay(ctx);
-        map.getOverlays().add(this.mCopyrightOverlay);
         return root;
     }
 
@@ -139,20 +135,6 @@ public class GlobalMapFragment extends Fragment {
         //i hate this very much, but it seems as if certain versions of android and/or
         //device types handle screen offsets differently
         map.getOverlays().add(this.mCopyrightOverlay);
-
-
-        //On screen compass
-        mCompassOverlay = new CompassOverlay(context, new InternalCompassOrientationProvider(context),
-                map);
-        mCompassOverlay.enableCompass();
-        map.getOverlays().add(this.mCompassOverlay);
-
-
-        //map scale
-        mScaleBarOverlay = new ScaleBarOverlay(map);
-        mScaleBarOverlay.setCentred(true);
-        mScaleBarOverlay.setScaleBarOffset(dm.widthPixels / 2, 10);
-        map.getOverlays().add(this.mScaleBarOverlay);
 
 
         //support for map rotation

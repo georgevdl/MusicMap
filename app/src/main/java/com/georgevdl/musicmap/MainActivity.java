@@ -9,6 +9,8 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -69,10 +71,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+
+        // Replace the activity if the user shared a track
+        if (intent.getStringExtra(Intent.EXTRA_TEXT) != null) {
+            finishAndRemoveTask();
+            startActivity(getIntent());
+        }
+    }
+
+    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch(requestCode) {
-            case (REQUEST_MANUAL_LOCATION) : {
+        switch (requestCode) {
+            case (REQUEST_MANUAL_LOCATION): {
                 if (resultCode == Activity.RESULT_OK) {
                     // TODO Extract the data returned from the child Activity.
                     double latitude = data.getDoubleExtra("latitude", 0);
@@ -130,18 +144,20 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onLoadResource(WebView view, String url) {
                     if (url.contains("favicon.ico") && counter++ == 2) {
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.titleStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h1', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.artistStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h2/meta/@content', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.genreStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h3', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.albumArtURLStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[1]/img/@src', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.lyricsStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/p', document, null, XPathResult.STRING_TYPE, null).stringValue);");
-                        myWebView.loadUrl("javascript:window.HtmlViewer.showHTML(document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/div/div', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        final Handler handler = new Handler(Looper.getMainLooper());
+                        handler.postDelayed(() -> {
+                            myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.titleStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h1', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                            myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.artistStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h2/meta/@content', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                            myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.genreStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[2]/div[1]/div/div/h3', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                            myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.albumArtURLStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[1]/div/article[2]/div[2]/div[1]/img/@src', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                            myWebView.loadUrl("javascript:window.HtmlViewer.showHTML('" + MyJavaScriptInterface.lyricsStart + "'+document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/p', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                            myWebView.loadUrl("javascript:window.HtmlViewer.showHTML(document.evaluate('/html/body/div[4]/div/main/div/div[3]/div[2]/div/article/div/div/div/div', document, null, XPathResult.STRING_TYPE, null).stringValue);");
+                        }, 200);
                     }
                 }
             });
             myWebView.loadUrl(shazamURL);
         }
-
     }
 
     public void setHomeViewModel(com.georgevdl.musicmap.ui.add.AddViewModel avm) {
@@ -159,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
             currentTrack = new Track(s[0], s[1], s[2], s[3], s[4], id);
 
             showTrackInfo(currentTrack);
+            homeViewModel.setProgressBarVisibility(ProgressBar.VISIBLE);
 
             prepareLocation(null);
 
@@ -168,6 +185,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void showTrackInfo(Track track) {
+
+        homeViewModel.setTryGPSAgainButtonVisibility(Button.GONE);
+        homeViewModel.setManuallyPickLocationButtonVisibility(Button.GONE);
+        homeViewModel.setAddToMyMapButtonVisibility(Button.GONE);
+        homeViewModel.setProgressBarVisibility(ProgressBar.GONE);
 
         homeViewModel.setStartVisibility(TextView.GONE);
         homeViewModel.setResultsVisibility(TextView.VISIBLE);
@@ -223,34 +245,32 @@ public class MainActivity extends AppCompatActivity {
             requestLocationPermission();
             return false;
         }
-
+        int providerCounter = 0;
         locationManager = (LocationManager)
                 getSystemService(Context.LOCATION_SERVICE);
+        locationListener = new MyLocationListener(this);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Toast.makeText(this, "GPS Location Provider Error", Toast.LENGTH_SHORT).show();
-            return false;
+            //Toast.makeText(this, "GPS Location Provider Error", Toast.LENGTH_SHORT).show();
+        } else {
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER, 1000, 0, locationListener);
+            providerCounter++;
         }
         if (!locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            Toast.makeText(this, "Network Location Provider Error", Toast.LENGTH_SHORT).show();
-            return false;
+            //Toast.makeText(this, "Network Location Provider Error", Toast.LENGTH_SHORT).show();
+        } else {
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
+            providerCounter++;
         }
-        locationListener = new MyLocationListener(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!locationManager.isProviderEnabled(LocationManager.FUSED_PROVIDER)) {
-                Toast.makeText(this, "Fused Location Provider Error", Toast.LENGTH_SHORT).show();
-                return false;
+                //Toast.makeText(this, "Fused Location Provider Error", Toast.LENGTH_SHORT).show();
+            } else {
+                locationManager.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 1000, 0, locationListener);
+                providerCounter++;
             }
-            locationManager.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 1000, 0, locationListener);
         }
-
-
-        locationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, 1000, 0, locationListener);
-
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, locationListener);
-
-        //Toast.makeText(this, "Location started", Toast.LENGTH_SHORT).show();
-        return true;
+        return providerCounter > 0;
     }
 
     public void prepareLocation(View v){
@@ -311,5 +331,11 @@ public class MainActivity extends AppCompatActivity {
         homeViewModel.setStatusTextVisibility(TextView.GONE);
         homeViewModel.insert(currentTrack);
         homeViewModel.insert(new TrackLocation(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), lastKnownLocation.getTime(), currentTrack.mId));
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        finishAndRemoveTask();
     }
 }
