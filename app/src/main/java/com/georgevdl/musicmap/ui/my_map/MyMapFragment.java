@@ -22,6 +22,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.georgevdl.musicmap.MainActivity;
+import com.georgevdl.musicmap.R;
 import com.georgevdl.musicmap.Track;
 import com.georgevdl.musicmap.TrackLocation;
 import com.georgevdl.musicmap.TrackWithLocations;
@@ -39,6 +40,7 @@ import org.osmdroid.views.overlay.MinimapOverlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
+import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
@@ -77,13 +79,6 @@ public class MyMapFragment extends Fragment {
 
     private MyMapViewModel myMapViewModel;
 
-    private final Observer<Track> trackObserver = new Observer<Track>() {
-        @Override
-        public void onChanged(Track track) {
-            ((MainActivity) getActivity()).showTrackInfo(track);
-        }
-    };
-
     private Marker.OnMarkerClickListener markerListener = new Marker.OnMarkerClickListener() {
 
         @Override
@@ -91,7 +86,35 @@ public class MyMapFragment extends Fragment {
             marker.showInfoWindow();
             mapView.getController().animateTo(marker.getPosition());
             if (marker.getId().startsWith("track_")) {
+                /*marker.setSubDescription("Hello");
+                marker.showInfoWindow();*/
                 int trackId = Integer.parseInt(marker.getId().substring(6));
+                Observer<Track> trackObserver = new Observer<Track>() {
+                    @Override
+                    public void onChanged(Track track) {
+                        ((MainActivity) getActivity()).showTrackInfo(track);
+                        Glide.with(getContext())
+                                .asDrawable()
+                                .load(track.mAlbumArtURL)
+                                .dontTransform()
+                                .into(new CustomTarget<Drawable>() {
+                                    @Override
+                                    public void onResourceReady(@NonNull Drawable resource, Transition<? super Drawable> transition) {
+                                        marker.setImage(resource);
+                                        marker.showInfoWindow();
+
+                                    }
+
+                                    @Override
+                                    public void onLoadCleared(Drawable placeholder) {
+                                    }
+                                        /*@Override
+                                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                                            Toast.makeText(getContext(), "Failed to get album art", Toast.LENGTH_SHORT).show();
+                                        }*/
+                                });
+                    }
+                };
                 myMapViewModel.getTrackById(trackId).observe(getViewLifecycleOwner(), trackObserver);
             }
             return true;
@@ -179,34 +202,13 @@ public class MyMapFragment extends Fragment {
                             Marker startMarker = new Marker(map);
                             startMarker.setPosition(startPoint);
                             startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-                            startMarker.setTitle(trackWithLocations.track.mTitle + "\n" + trackWithLocations.track.mArtist);
+                            startMarker.setTitle(trackWithLocations.track.mTitle);
+                            startMarker.setSnippet(trackWithLocations.track.mArtist);
                             startMarker.setSubDescription(trackWithLocations.track.mGenre);
-
+                            startMarker.setInfoWindow(new MarkerInfoWindow(R.layout.custom_bubble, map));
                             startMarker.setId("track_" + trackWithLocations.track.mId);
 
                             startMarker.setOnMarkerClickListener(markerListener);
-
-                            Glide.with(getContext())
-                                    .asDrawable()
-                                    .load(trackWithLocations.track.mAlbumArtURL)
-                                    .dontTransform()
-                                    .into(new CustomTarget<Drawable>() {
-                                        @Override
-                                        public void onResourceReady(@NonNull Drawable resource, Transition<? super Drawable> transition) {
-                                            startMarker.setImage(resource);
-                                            //startMarker.setIcon(resource);
-                                            //Toast.makeText(getContext(), "OK", Toast.LENGTH_SHORT).show();
-
-                                        }
-
-                                        @Override
-                                        public void onLoadCleared(Drawable placeholder) {
-                                        }
-                                        /*@Override
-                                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
-                                            Toast.makeText(getContext(), "Failed to get album art", Toast.LENGTH_SHORT).show();
-                                        }*/
-                                    });
 
                             map.getOverlays().add(startMarker);
                         }

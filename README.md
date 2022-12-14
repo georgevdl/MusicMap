@@ -3,6 +3,9 @@
 Connect your music to the places where you discovered it. Identify a song, then share it to this
 application and add it to your own Music Map.
 
+Future feature: Global map which will contain songs shared by all users. Allows you to find new
+music (possibly filtered by genre or date of discovery) in new places.
+
 ### Screenshots
 
 After the user shares the link to a track the application will start downloading its metadata

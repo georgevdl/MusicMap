@@ -176,6 +176,7 @@ public class MainActivity extends AppCompatActivity {
 
             showTrackInfo(currentTrack);
             homeViewModel.setProgressBarVisibility(ProgressBar.VISIBLE);
+            homeViewModel.setStatusTextVisibility(TextView.VISIBLE);
 
             prepareLocation(null);
 
@@ -190,6 +191,8 @@ public class MainActivity extends AppCompatActivity {
         homeViewModel.setManuallyPickLocationButtonVisibility(Button.GONE);
         homeViewModel.setAddToMyMapButtonVisibility(Button.GONE);
         homeViewModel.setProgressBarVisibility(ProgressBar.GONE);
+
+        homeViewModel.setStatusTextVisibility(TextView.GONE);
 
         homeViewModel.setStartVisibility(TextView.GONE);
         homeViewModel.setResultsVisibility(TextView.VISIBLE);
@@ -297,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void onNewLocation(){
         lastKnownLocation = locationListener.getLocation();
-        if(lastKnownLocation.getAccuracy() < 10){
+        if (lastKnownLocation != null && lastKnownLocation.getAccuracy() < 10) {
             stopLocation();
             homeViewModel.setTextStatus("Got precise location. Ready to add track to map");
 
@@ -325,6 +328,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void addToMyMap(View v) {
+        stopLocation();
         homeViewModel.setTryGPSAgainButtonVisibility(Button.GONE);
         homeViewModel.setManuallyPickLocationButtonVisibility(Button.GONE);
         homeViewModel.setAddToMyMapButtonVisibility(Button.GONE);

@@ -14,15 +14,12 @@ public class TrackLocation {
     @ColumnInfo(name = "longitude")
     public double mLongitude;
 
+    @PrimaryKey
     @ColumnInfo(name = "timestamp")
     public long mTimestamp;
 
     @ColumnInfo(name = "trackId")
     public long mTrackId;
-
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = "primaryKey")
-    long pKey = 0;
 
     public TrackLocation(@NonNull double latitude, @NonNull double longitude, @NonNull long timestamp, @NonNull long trackId) {
         this.mLatitude = latitude;
