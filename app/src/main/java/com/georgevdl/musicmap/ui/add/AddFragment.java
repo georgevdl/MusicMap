@@ -85,6 +85,8 @@ public class AddFragment extends Fragment {
 
         final Button buttonAddToMyMap = binding.buttonAddToMyMap;
         homeViewModel.getButtonAddToMyMapVisibility().observe(getViewLifecycleOwner(), buttonAddToMyMap::setVisibility);
+        final Button buttonAddToGlobalMap = binding.buttonAddToGlobalMap;
+        homeViewModel.getButtonAddToMyMapVisibility().observe(getViewLifecycleOwner(), buttonAddToGlobalMap::setVisibility);
 
         return root;
     }

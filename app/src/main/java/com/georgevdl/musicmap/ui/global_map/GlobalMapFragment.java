@@ -2,6 +2,7 @@ package com.georgevdl.musicmap.ui.global_map;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
@@ -16,8 +17,19 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.georgevdl.musicmap.MainActivity;
+import com.georgevdl.musicmap.OnlineTrack;
+import com.georgevdl.musicmap.OnlineTrackLocation;
+import com.georgevdl.musicmap.R;
+import com.georgevdl.musicmap.Utils;
 import com.georgevdl.musicmap.databinding.FragmentGlobalmapBinding;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.ValueEventListener;
 
 import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.config.Configuration;
@@ -26,10 +38,12 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.CopyrightOverlay;
+import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.MinimapOverlay;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay;
+import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
@@ -61,6 +75,64 @@ public class GlobalMapFragment extends Fragment {
     private ScaleBarOverlay mScaleBarOverlay;
     private RotationGestureOverlay mRotationGestureOverlay;
     private CopyrightOverlay mCopyrightOverlay;
+
+    private Marker.OnMarkerClickListener markerListener = new Marker.OnMarkerClickListener() {
+
+        @Override
+        public boolean onMarkerClick(Marker marker, MapView mapView) {
+            //marker.showInfoWindow();
+            mapView.getController().animateTo(marker.getPosition());
+            if (marker.getId().startsWith("track_")) {
+                DatabaseReference ref = Utils.getDatabase().getInstance().getReference().child("tracks");
+                marker.setInfoWindow(new MarkerInfoWindow(R.layout.custom_bubble, map));
+                ref.child(marker.getId().substring(6)).addListenerForSingleValueEvent(
+                        new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                OnlineTrack onlineTrack = dataSnapshot.getValue(OnlineTrack.class);
+                                if (onlineTrack == null)
+                                    return;
+
+                                marker.setTitle(onlineTrack.title);
+                                marker.setSnippet(onlineTrack.artist);
+                                marker.setSubDescription(onlineTrack.genre);
+                                marker.closeInfoWindow();
+                                marker.showInfoWindow();
+
+                                Glide.with(getContext())
+                                        .asDrawable()
+                                        .load(onlineTrack.albumArtURL)
+                                        .dontTransform()
+                                        .into(new CustomTarget<Drawable>() {
+                                            @Override
+                                            public void onResourceReady(@NonNull Drawable resource, Transition<? super Drawable> transition) {
+                                                marker.setImage(resource);
+                                                marker.closeInfoWindow();
+                                                marker.showInfoWindow();
+                                            }
+
+                                            @Override
+                                            public void onLoadCleared(Drawable placeholder) {
+                                            }
+                                        /*@Override
+                                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                                            Toast.makeText(getContext(), "Failed to get album art", Toast.LENGTH_SHORT).show();
+                                        }*/
+                                        });
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+                                //handle databaseError
+                            }
+                        });
+
+
+                //myMapViewModel.getTrackById(trackId).observe(getViewLifecycleOwner(), trackObserver);
+            }
+            return true;
+        }
+    };
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -116,12 +188,35 @@ public class GlobalMapFragment extends Fragment {
     }
 
     @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-
+    public void onViewCreated(View view, Bundle savedInstanceState) {
         final Context context = this.getActivity();
         final DisplayMetrics dm = context.getResources().getDisplayMetrics();
         mPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+        DatabaseReference ref = Utils.getDatabase().getInstance().getReference().child("trackLocations");
+        ref.addListenerForSingleValueEvent(
+                new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+
+                        for (DataSnapshot postSnapshot : dataSnapshot.getChildren()) {
+                            OnlineTrackLocation result = postSnapshot.getValue(OnlineTrackLocation.class);
+                            GeoPoint startPoint = new GeoPoint(result.latitude, result.longitude);
+                            Marker startMarker = new Marker(map);
+                            startMarker.setPosition(startPoint);
+                            startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                            startMarker.setTitle("Loading...");
+                            startMarker.setId("track_" + result.trackId);
+                            startMarker.setOnMarkerClickListener(markerListener);
+                            map.getOverlays().add(startMarker);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        //handle databaseError
+                    }
+                });
 
 
         //My Location
@@ -135,13 +230,6 @@ public class GlobalMapFragment extends Fragment {
         //i hate this very much, but it seems as if certain versions of android and/or
         //device types handle screen offsets differently
         map.getOverlays().add(this.mCopyrightOverlay);
-
-
-        //support for map rotation
-        mRotationGestureOverlay = new RotationGestureOverlay(map);
-        mRotationGestureOverlay.setEnabled(true);
-        map.getOverlays().add(this.mRotationGestureOverlay);
-
 
         //needed for pinch zooms
         map.setMultiTouchControls(true);
@@ -160,7 +248,7 @@ public class GlobalMapFragment extends Fragment {
         final double longitude = Double.valueOf(longitudeString);
         map.setExpectedCenter(new GeoPoint(latitude, longitude));
 
-        setHasOptionsMenu(true);
+        //setHasOptionsMenu(true);
     }
 
     @Override

@@ -19,17 +19,32 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.NavigationUI;
 
+import com.firebase.ui.auth.AuthUI;
+import com.firebase.ui.auth.FirebaseAuthUIActivityResultContract;
+import com.firebase.ui.auth.IdpResponse;
+import com.firebase.ui.auth.data.model.FirebaseAuthUIAuthenticationResult;
 import com.georgevdl.musicmap.databinding.ActivityMainBinding;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.elevation.SurfaceColors;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
 
-import pub.devrel.easypermissions.AfterPermissionGranted;
+import java.util.Arrays;
+import java.util.List;
+
 import pub.devrel.easypermissions.EasyPermissions;
 
 public class MainActivity extends AppCompatActivity {
@@ -45,14 +60,28 @@ public class MainActivity extends AppCompatActivity {
     Location lastKnownLocation = null;
     private final int REQUEST_MANUAL_LOCATION = 2;
 
+    // See: https://developer.android.com/training/basics/intents/result
+    private final ActivityResultLauncher<Intent> signInLauncher = registerForActivityResult(
+            new FirebaseAuthUIActivityResultContract(),
+            new ActivityResultCallback<FirebaseAuthUIAuthenticationResult>() {
+                @Override
+                public void onActivityResult(FirebaseAuthUIAuthenticationResult result) {
+                    onSignInResult(result);
+                }
+            }
+    );
+
+    private FirebaseAuth mAuth;
+    FirebaseUser currentUser;
+
+    private DatabaseReference mDatabase;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         DynamicColors.applyToActivityIfAvailable(this);
         getWindow().setNavigationBarColor(SurfaceColors.SURFACE_2.getColor(this));
         //getWindow().setStatusBarColor(SurfaceColors.SURFACE_2.getColor(this));
-
-
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -65,6 +94,33 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         //NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
+
+        mAuth = FirebaseAuth.getInstance();
+        currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            mAuth.signInAnonymously()
+                    .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (task.isSuccessful()) {
+                                // Sign in success, update UI with the signed-in user's information
+                                //Log.d(TAG, "signInAnonymously:success");
+                                currentUser = mAuth.getCurrentUser();
+                                mDatabase = Utils.getDatabase().getInstance().getReference();
+                                mDatabase.child("trackLocations").keepSynced(true);
+                                mDatabase.child("tracks").keepSynced(true);
+                                //updateUI(user);
+                            } else {
+                                // If sign in fails, display a message to the user.
+                                /*Log.w(TAG, "signInAnonymously:failure", task.getException());
+                                Toast.makeText(AnonymousAuthActivity.this, "Authentication failed.",
+                                        Toast.LENGTH_SHORT).show();*/
+                            }
+                        }
+                    });
+        }
+
+        mDatabase = Utils.getDatabase().getInstance().getReference();
 
         if (savedInstanceState == null)
             getSharedSong();
@@ -232,7 +288,6 @@ public class MainActivity extends AppCompatActivity {
         MainActivity.this.startActivityForResult(myIntent, REQUEST_MANUAL_LOCATION);
     }
 
-    @AfterPermissionGranted(REQUEST_LOCATION_PERMISSION)
     private boolean startLocation() {
         homeViewModel.setManuallyPickLocationButtonVisibility(Button.VISIBLE);
 
@@ -244,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
-            Toast.makeText(this, "Location permission not granted", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "Location permission not granted", Toast.LENGTH_SHORT).show();
             requestLocationPermission();
             return false;
         }
@@ -312,7 +367,6 @@ public class MainActivity extends AppCompatActivity {
         String[] perms = {Manifest.permission.ACCESS_FINE_LOCATION};
         if(EasyPermissions.hasPermissions(this, perms)) {
             //Toast.makeText(this, "Permission already granted", Toast.LENGTH_SHORT).show();
-            startLocation();
         }
         else {
             EasyPermissions.requestPermissions(this, "Please grant the location permission", REQUEST_LOCATION_PERMISSION, perms);
@@ -341,5 +395,68 @@ public class MainActivity extends AppCompatActivity {
     public void onBackPressed() {
         super.onBackPressed();
         finishAndRemoveTask();
+    }
+
+    public void signIn(View v) {
+        if (currentUser == null) {
+            // Choose authentication providers
+            List<AuthUI.IdpConfig> providers = Arrays.asList(
+                    new AuthUI.IdpConfig.AnonymousBuilder().build(),
+                    new AuthUI.IdpConfig.GoogleBuilder().build());
+
+            // Create and launch sign-in intent
+            Intent signInIntent = AuthUI.getInstance()
+                    .createSignInIntentBuilder()
+                    .setAvailableProviders(providers)
+                    .build();
+            signInLauncher.launch(signInIntent);
+        } else if (currentUser.isAnonymous()) {
+            // Choose authentication providers
+            List<AuthUI.IdpConfig> providers = Arrays.asList(
+                    new AuthUI.IdpConfig.GoogleBuilder().build());
+
+            // Create and launch sign-in intent
+            Intent signInIntent = AuthUI.getInstance()
+                    .createSignInIntentBuilder()
+                    .setAvailableProviders(providers)
+                    .build();
+            signInLauncher.launch(signInIntent);
+        }
+    }
+
+    public void addToGlobalMap(View v) {
+        if (homeViewModel.getButtonAddToMyMapVisibility().getValue() == Button.VISIBLE) {
+            addToMyMap(null);
+        } else {
+            stopLocation();
+        }
+        if (currentTrack == null)
+            return;
+        if (currentUser == null) {
+            Toast.makeText(this, "Couldn't upload to global map: Not logged in", Toast.LENGTH_SHORT);
+            return;
+        }
+        if (currentTrack.mGenre != null)
+            mDatabase.child("genres").child(currentTrack.mGenre).setValue(true);
+        OnlineTrackLocation newOnlineTrackLoc = new OnlineTrackLocation(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), lastKnownLocation.getTime(), currentTrack.mId, currentTrack.mGenre, currentUser.getUid());
+        String tmpKey = mDatabase.child("trackLocations").push().getKey();
+        mDatabase.child("trackLocations").child(tmpKey).setValue(newOnlineTrackLoc);
+        mDatabase.child("tracks").child("" + currentTrack.mId).setValue(new OnlineTrack(currentTrack.mTitle, currentTrack.mArtist, currentTrack.mGenre, currentTrack.mAlbumArtURL));
+    }
+
+    private void onSignInResult(FirebaseAuthUIAuthenticationResult result) {
+        IdpResponse response = result.getIdpResponse();
+        if (result.getResultCode() == RESULT_OK) {
+            // TODO
+            // Successfully signed in
+            currentUser = FirebaseAuth.getInstance().getCurrentUser();
+
+            // ...
+        } else {
+            // Sign in failed. If response is null the user canceled the
+            // sign-in flow using the back button. Otherwise check
+            // response.getError().getErrorCode() and handle the error.
+            // ...
+        }
     }
 }

@@ -40,7 +40,7 @@ public class AddViewModel extends AndroidViewModel {
     public AddViewModel(Application application) {
         super(application);
         mTextStart = new MutableLiveData<>();
-        mTextStart.setValue("To start, open Shazam and share a song to this app");
+        mTextStart.setValue("To start, open Shazam and share a song to this app.\n\n\nThis app is not endorsed by, directly affiliated with, maintained, authorized, or sponsored by Shazam or Apple.");
         mStartVisibility = new MutableLiveData<>();
         mStartVisibility.setValue(TextView.VISIBLE);
 

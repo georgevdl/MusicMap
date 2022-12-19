@@ -72,6 +72,7 @@
                 android:visibility="gone"
                 android:onClick="manuallyPickLocation"
                 android:text="Manually pick location" />
+
             <Button
                 android:id="@+id/button_add_to_my_map"
                 android:layout_width="match_parent"
@@ -79,6 +80,21 @@
                 android:visibility="gone"
                 android:onClick="addToMyMap"
                 android:text="Add to my map" />
+
+            <!--            <Button-->
+            <!--                android:id="@+id/button_sign_in"-->
+            <!--                android:layout_width="match_parent"-->
+            <!--                android:layout_height="wrap_content"-->
+            <!--                android:onClick="signIn"-->
+            <!--                android:text="Sign In" />-->
+
+            <Button
+                android:id="@+id/button_add_to_global_map"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="addToGlobalMap"
+                android:visibility="gone"
+                android:text="Add to global and my map" />
 
             <TextView
                 android:id="@+id/text_title"
