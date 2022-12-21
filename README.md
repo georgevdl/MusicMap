@@ -1,12 +1,21 @@
 # Music Map
 
 Connect your music to the places where you discovered it. Identify a song, then share it to this
-application and add it to your own Music Map.
+application and add it to your own Music Map. You could also add it to the Global map which contains
+songs shared by all users.  
+Discover new music in new places by browsing the Global Map.
 
-Future feature: Global map which will contain songs shared by all users. Allows you to find new
-music (possibly filtered by genre or date of discovery) in new places.
+Future feature: Filter the global map results by genre or date of discovery
+
+### Download
+
+The application is in early development and may contain bugs.  
+Download [app-release.apk](app/release/app-release.apk?raw=true)
 
 ### Screenshots
+
+The screenshots are outdated and only show the "My Map" function. The "Global Map" function has been
+implemented and can be tested by installing the above APK.
 
 After the user shares the link to a track the application will start downloading its metadata
 ![](Screenshots/1.png)
